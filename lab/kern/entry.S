@@ -3,16 +3,16 @@
 #include <inc/mmu.h>
 #include <inc/memlayout.h>
 
-# Shift Right Logical
+# Shift Right Logical 
 #define SRL(val, shamt)		(((val) >> (shamt)) & ~(-1 << (32 - (shamt))))
 
 
 ###################################################################
-# The kernel (this code) is linked at address ~(KERNBASE + 1 Meg),
+# The kernel (this code) is linked at address ~(KERNBASE + 1 Meg), 
 # but the bootloader loads it at address ~1 Meg.
-#
+#	
 # RELOC(x) maps a symbol x from its link address to its actual
-# location in physical memory (its load address).
+# location in physical memory (its load address).	 
 ###################################################################
 
 #define	RELOC(x) ((x) - KERNBASE)
@@ -74,6 +74,7 @@ relocated:
 	movl	$0x0,%ebp			# nuke frame pointer
 
 	# Set the stack pointer
+	# 0xf0110000 3G
 	movl	$(bootstacktop),%esp
 
 	# now to C code
@@ -83,6 +84,7 @@ relocated:
 spin:	jmp	spin
 
 
+# 在数据段预留32kB给stack
 .data
 ###################################################################
 # boot stack
@@ -90,7 +92,7 @@ spin:	jmp	spin
 	.p2align	PGSHIFT		# force page alignment
 	.globl		bootstack
 bootstack:
-	.space		KSTKSIZE    # 32KB
-	.globl		bootstacktop
+	.space		KSTKSIZE   # reserve 32kB
+	.globl		bootstacktop   
 bootstacktop:
 

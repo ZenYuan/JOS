@@ -23,7 +23,7 @@ delay(void)
 
 /***** Serial I/O code *****/
 
-#define COM1		0x3F8 //w   //0x3F8-0x3FF serial port
+#define COM1		0x3F8
 
 #define COM_RX		0	// In:	Receive buffer (DLAB=0)
 #define COM_TX		0	// Out: Transmit buffer (DLAB=0)
@@ -66,6 +66,7 @@ static void
 serial_putc(int c)
 {
 	int i;
+
 	for (i = 0;
 	     !(inb(COM1 + COM_LSR) & COM_LSR_TXRDY) && i < 12800;
 	     i++)
@@ -98,6 +99,7 @@ serial_init(void)
 	serial_exists = (inb(COM1+COM_LSR) != 0xFF);
 	(void) inb(COM1+COM_IIR);
 	(void) inb(COM1+COM_RX);
+
 }
 
 
@@ -162,8 +164,9 @@ cga_putc(int c)
 {
 	// if no attribute given, then use black on white
 	if (!(c & ~0xFF))
+	{
 		c |= 0x0700;
-
+	}
 	switch (c & 0xff) {
 	case '\b':
 		if (crt_pos > 0) {
@@ -188,13 +191,14 @@ cga_putc(int c)
 		crt_buf[crt_pos++] = c;		/* write the character */
 		break;
 	}
+
 	// What is the purpose of this?
 	if (crt_pos >= CRT_SIZE) {
 		int i;
 
 		memmove(crt_buf, crt_buf + CRT_COLS, (CRT_SIZE - CRT_COLS) * sizeof(uint16_t));
 		for (i = CRT_SIZE - CRT_COLS; i < CRT_SIZE; i++)
-			crt_buf[i] = 0; //0x0700 | ' ';
+			crt_buf[i] = 0x0700 | ' ';
 		crt_pos -= CRT_COLS;
 	}
 

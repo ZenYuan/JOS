@@ -1,6 +1,6 @@
 # Prerequisites
 *.d
-
+lab/obj/
 # Object files
 *.o
 *.ko

@@ -13,7 +13,7 @@
 start:
   .code16                     # Assemble for 16-bit mode
   cli                         # Disable interrupts
-  cld                         # String operations increment(low->hight)
+  cld                         # String operations increment
 
   # Set up the important data segment registers (DS, ES, SS).
   xorw    %ax,%ax             # Segment number zero
@@ -42,14 +42,14 @@ seta20.2:
   outb    %al,$0x60
 
   # Switch from real to protected mode, using a bootstrap GDT
-  # and segment translation that makes virtual addresses
-  # identical to their physical addresses, so that the
+  # and segment translation that makes virtual addresses 
+  # identical to their physical addresses, so that the 
   # effective memory map does not change during the switch.
   lgdt    gdtdesc
   movl    %cr0, %eax
   orl     $CR0_PE_ON, %eax
   movl    %eax, %cr0
-
+  
   # Jump to next instruction, but in 32-bit code segment.
   # Switches processor into 32-bit mode.
   ljmp    $PROT_MODE_CSEG, $protcseg
@@ -63,7 +63,7 @@ protcseg:
   movw    %ax, %fs                # -> FS
   movw    %ax, %gs                # -> GS
   movw    %ax, %ss                # -> SS: Stack Segment
-
+  
   # Set up the stack pointer and call into C.
   movl    $start, %esp
   call bootmain
@@ -73,14 +73,12 @@ spin:
   jmp spin
 
 # Bootstrap GDT
-# every seg is 8 byte
 .p2align 2                                # force 4 byte alignment
 gdt:
   SEG_NULL				# null seg
   SEG(STA_X|STA_R, 0x0, 0xffffffff)	# code seg
   SEG(STA_W, 0x0, 0xffffffff)	        # data seg
 
-# gdtr48位寄存器，低地址长度，高地址是gdt表首地址
 gdtdesc:
   .word   0x17                            # sizeof(gdt) - 1
   .long   gdt                             # address gdt

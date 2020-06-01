@@ -9,8 +9,6 @@ breakpoint(void)
 	asm volatile("int3");
 }
 
-//inb from io get one char
-//only use with %edx,%eax register
 static inline uint8_t
 inb(int port)
 {
@@ -62,8 +60,6 @@ insl(int port, void *addr, int cnt)
 		     : "memory", "cc");
 }
 
-//to io one char
-//only use of %eax %edx
 static inline void
 outb(int port, uint8_t data)
 {
