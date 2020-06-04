@@ -79,7 +79,6 @@ getint(va_list *ap, int lflag)
 // Main function to format and print a string.
 void printfmt(void (*putch)(int, void*), void *putdat, const char *fmt, ...);
 
-//静态函数不能跨文件调用可以通过函数指针打破，但是为何要把该函数拉出来？
 void
 vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 {
@@ -88,10 +87,7 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 	unsigned long long num;
 	int base, lflag, width, precision, altflag;
 	char padc;
-	putch(0, NULL);
-	putch(0, NULL);
-	putch(0, NULL);
-	putch(0, NULL);
+
 	while (1) {
 		while ((ch = *(unsigned char *) fmt++) != '%') {
 			if (ch == '\0')
@@ -210,15 +206,7 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 		// (unsigned) octal
 		case 'o':
 			// Replace this with your code.
-			// putch('X', putdat);
-			// putch('X', putdat);
-			// putch('X', putdat);
-			//break;
-			num = getint(&ap, lflag);
-			if ((long long) num < 0) {
-				putch('-', putdat);
-				num = -(long long) num;
-			}
+			num = getuint(&ap, lflag);
 			base = 8;
 			goto number;
 

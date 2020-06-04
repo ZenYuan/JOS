@@ -74,7 +74,6 @@ relocated:
 	movl	$0x0,%ebp			# nuke frame pointer
 
 	# Set the stack pointer
-	# 0xf0110000 3G
 	movl	$(bootstacktop),%esp
 
 	# now to C code
@@ -84,7 +83,6 @@ relocated:
 spin:	jmp	spin
 
 
-# 在数据段预留32kB给stack
 .data
 ###################################################################
 # boot stack
@@ -92,7 +90,7 @@ spin:	jmp	spin
 	.p2align	PGSHIFT		# force page alignment
 	.globl		bootstack
 bootstack:
-	.space		KSTKSIZE   # reserve 32kB
+	.space		KSTKSIZE
 	.globl		bootstacktop   
 bootstacktop:
 
