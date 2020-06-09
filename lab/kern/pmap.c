@@ -93,7 +93,8 @@ boot_alloc(uint32_t n)
 	// the first virtual address that the linker did *not* assign
 	// to any kernel code or global variables.
 	if (!nextfree) {
-		extern char end[];
+		extern char end[];   //链接器链接结束地址
+		//4KB对齐
 		nextfree = ROUNDUP((char *) end, PGSIZE);
 	}
 
@@ -102,8 +103,14 @@ boot_alloc(uint32_t n)
 	// to a multiple of PGSIZE.
 	//
 	// LAB 2: Your code here.
-
-	return NULL;
+	//page director
+	cprintf("boot_alloc, nextfree:%x\n", nextfree);
+	result = nextfree;
+	if(0 != n)
+	{
+		nextfree = ROUNDUP((char*)nextfree + n, PGSIZE);
+	}
+	return result;
 }
 
 // Set up a two-level page table:
@@ -125,7 +132,7 @@ mem_init(void)
 	i386_detect_memory();
 
 	// Remove this line when you're ready to test this function.
-	panic("mem_init: This function is not finished\n");
+	//panic("mem_init: This function is not finished\n");
 
 	//////////////////////////////////////////////////////////////////////
 	// create initial page directory.
@@ -148,7 +155,9 @@ mem_init(void)
 	// array.  'npages' is the number of physical pages in memory.  Use memset
 	// to initialize all fields of each struct PageInfo to 0.
 	// Your code goes here:
-
+	pages = boot_alloc(npages * sizeof(struct PageInfo));
+	memset(pages, 0, npages * sizeof(struct PageInfo));
+	cprintf("npages:%d\n", npages);   //32kb
 
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
@@ -238,21 +247,34 @@ page_init(void)
 	// However this is not truly the case.  What memory is free?
 	//  1) Mark physical page 0 as in use.
 	//     This way we preserve the real-mode IDT and BIOS structures
-	//     in case we ever need them.  (Currently we don't, but...)
+	//     in case we ever need them.  (Currently we don't, but...) 4KB
 	//  2) The rest of base memory, [PGSIZE, npages_basemem * PGSIZE)
-	//     is free.
+	//     is free.  //4KB-640KB将bootloader和elf_header覆盖
 	//  3) Then comes the IO hole [IOPHYSMEM, EXTPHYSMEM), which must
-	//     never be allocated.
+	//     never be allocated. //640KB-1MB
 	//  4) Then extended memory [EXTPHYSMEM, ...).
 	//     Some of it is in use, some is free. Where is the kernel
 	//     in physical memory?  Which pages are already in use for
-	//     page tables and other data structures?
+	//     page tables and other data structures? 1MB以后出去kernel的大小
 	//
 	// Change the code to reflect this.
 	// NB: DO NOT actually touch the physical memory corresponding to
 	// free pages!
 	size_t i;
-	for (i = 0; i < npages; i++) {
+	//0kB-1MB
+	//第一个4kB用于IDT
+	for(int i = 1; i < npages_basemem; i++)
+	{
+		pages[i].pp_ref = 0;
+		pages[i].pp_link = page_free_list;
+		page_free_list = &pages[i];
+	}
+
+	//1MB-4GB reduce kernel size
+	char* kernel_end = boot_alloc(0);
+	//将虚拟地址转换为物理地址并计算出页个数。
+	size_t kernel_page_end_num = PGNUM(PADDR(kernel_end));
+	for (i = kernel_page_end_num; i < npages; i++) {
 		pages[i].pp_ref = 0;
 		pages[i].pp_link = page_free_list;
 		page_free_list = &pages[i];
@@ -274,8 +296,15 @@ page_init(void)
 struct PageInfo *
 page_alloc(int alloc_flags)
 {
-	// Fill this function in
-	return 0;
+	if (page_free_list) {
+		struct PageInfo *ret = page_free_list;
+		page_free_list = page_free_list->pp_link;
+		ret->pp_link = NULL;
+		if (alloc_flags & ALLOC_ZERO)
+			memset(page2kva(ret), 0, PGSIZE);
+		return ret;
+	}
+	return NULL;
 }
 
 //
@@ -288,6 +317,11 @@ page_free(struct PageInfo *pp)
 	// Fill this function in
 	// Hint: You may want to panic if pp->pp_ref is nonzero or
 	// pp->pp_link is not NULL.
+	if(NULL == pp->pp_link && 0 == pp->pp_ref)
+	{
+		pp->pp_link = page_free_list;
+		page_free_list = pp;
+	}
 }
 
 //
