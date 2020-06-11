@@ -261,7 +261,7 @@ page_init(void)
 	// NB: DO NOT actually touch the physical memory corresponding to
 	// free pages!
 	size_t i;
-	//0kB-1MB
+	//0kB-640KB
 	//第一个4kB用于IDT
 	for(int i = 1; i < npages_basemem; i++)
 	{
@@ -317,11 +317,8 @@ page_free(struct PageInfo *pp)
 	// Fill this function in
 	// Hint: You may want to panic if pp->pp_ref is nonzero or
 	// pp->pp_link is not NULL.
-	if(NULL == pp->pp_link && 0 == pp->pp_ref)
-	{
-		pp->pp_link = page_free_list;
-		page_free_list = pp;
-	}
+	pp->pp_link = page_free_list;
+	page_free_list = pp;
 }
 
 //
@@ -361,7 +358,27 @@ pte_t *
 pgdir_walk(pde_t *pgdir, const void *va, int create)
 {
 	// Fill this function in
-	return NULL;
+	int dirIndex = PDX(va);
+	int pteIndex = PTX(va);
+	if(!(pgdir[dirIndex] & PTE_P))
+	{
+		if(create)
+		{
+			struct PageInfo* page = page_alloc(ALLOC_ZERO);
+			if(!page)
+			{
+				return NULL;
+			}
+			page->pp_ref++;
+			pgdir[dirIndex] = page2pa(page) | PTE_P | PTE_W | PTE_U;
+		}
+		else
+		{
+			return NULL;
+		}
+	}
+	pte_t* p = KADDR(PTE_ADDR(pgdir[dirIndex]));
+	return p+pteIndex;
 }
 
 //
@@ -379,6 +396,13 @@ static void
 boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 {
 	// Fill this function in
+	for(int i = 0; i < size/PGSIZE; i++, va += PGSIZE, pa += PGSIZE)
+	{
+		pte_t* pte = pgdir_walk(pgdir, (void*)va, 1);
+		//不用pp_ref++是因为此处pa给定，说明pa空闲是已经调用过page_alloc的
+		*pte = pa | perm | PTE_P;
+	}
+	return;
 }
 
 //
@@ -410,6 +434,19 @@ int
 page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 {
 	// Fill this function in
+	pte_t* pte = pgdir_walk(pgdir, va, 1);
+	if(!pte)
+	{
+		return -E_NO_MEM;
+	}
+
+	//如果该页存在，将其删除
+	pp->pp_ref++;
+	if(*pte & PTE_P)
+	{
+		page_remove(pgdir, va);
+	}
+	*pte = page2pa(pp) | perm | PTE_P;
 	return 0;
 }
 
@@ -428,7 +465,17 @@ struct PageInfo *
 page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 {
 	// Fill this function in
-	return NULL;
+	pte_t* pte = pgdir_walk(pgdir, va, 0);
+	if(!pte || !(*pte & PTE_P))
+	{
+		return NULL;
+	}
+
+	if(pte_store)
+	{
+		*pte_store = pte;
+	}
+	return pa2page(PTE_ADDR(*pte));
 }
 
 //
@@ -450,6 +497,22 @@ void
 page_remove(pde_t *pgdir, void *va)
 {
 	// Fill this function in
+	// pte_t* pte;
+	// struct PageInfo * pg = page_lookup(pgdir, va, &pte);
+	// if(!pg)
+	// {
+	// 	return;
+	// }
+	// page_decref(pg);
+	// tlb_invalidate(pgdir, va);
+	pte_t *pte;
+    struct PageInfo *page = page_lookup(pgdir, va, &pte);
+    if (!page || !(*pte & PTE_P)) {
+        return;
+    }
+    *pte = 0;
+    page_decref(page);
+    tlb_invalidate(pgdir, va);
 }
 
 //
